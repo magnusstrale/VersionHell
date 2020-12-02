@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "VersionHell": {
+      "commandName": "Project",
+      "commandLineArgs": "Cint.Sites.Portal.DataHandler",
+      "workingDirectory": "C:\\Dev\\main\\build\\Web.Portal.DataHandler\\bin"
+    }
+  }
+}
