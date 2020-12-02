@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Security.Policy;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace VersionHell
 {
@@ -96,17 +93,18 @@ namespace VersionHell
                 if (sameAssemblies.All(a => a._assemblyName.Version == assemblyName.Version)) continue;
 
                 Console.WriteLine("====================================");
-                WriteColor("Mismatch for " + assemblyName, ConsoleColor.DarkRed);
+                Console.Write("Mismatch for ");
+                WriteColor(assemblyName.FullName, ConsoleColor.Red);
+                Console.WriteLine();
                 Console.WriteLine();
                 foreach (var node in sameAssemblies)
                 {
                     WriteNode(node, ConsoleColor.Red);
-                    Console.WriteLine();
                 }
             }
 
             Console.WriteLine("====================================");
-            WriteColor("Missing assemblies:", ConsoleColor.DarkYellow);
+            Console.WriteLine("Missing assemblies (unable to load for inspection, but is probably not affecting your project)");
             Console.WriteLine();
             foreach (var missing in _missingAssemblies)
             {
@@ -115,7 +113,7 @@ namespace VersionHell
                 {
                     WriteColor(assemblyName.ToString(), ConsoleColor.Yellow);
                     Console.Write(" referenced by \r\n");
-                    Console.WriteLine(node.ToString(NodePart.Full | NodePart.SplitLine));
+                    Console.WriteLine(node.ToString(NodePart.Full));
                 }
             }
         }
@@ -128,65 +126,57 @@ namespace VersionHell
             Console.ForegroundColor = oldColor;
         }
 
-        private static void WriteNode(DependencyNode node, ConsoleColor color = ConsoleColor.White)
+        private static void WriteNode(DependencyNode node, ConsoleColor color)
         {
-            Console.Write(node.ToString(NodePart.Path | NodePart.SplitLine));
-            WriteColor("    " + node.ToString(NodePart.Leaf), color);
+            Console.Write(node.ToString(NodePart.Path));
+            WriteColor(node.ToString(NodePart.Leaf), color);
             Console.WriteLine();
         }
 
         public override string ToString() => ToString(NodePart.Full);
 
-        public string ToString(NodePart part)
+        private string ToString(NodePart part)
         {
-            var n = this;
             string value = "";
-            var list = new List<DependencyNode>();
-            if ((part & NodePart.Leaf) == NodePart.Leaf)
-            {
-                list.Add(n);
-            }
             if ((part & NodePart.Path) == NodePart.Path)
             {
+                var n = this;
+                var list = new List<DependencyNode>();
                 while (n._parent != null)
                 {
                     n = n._parent;
                     list.Insert(0, n);
                 }
-                if ((part & NodePart.SplitLine) == NodePart.SplitLine)
+                foreach (var node in list)
                 {
-                    var indent = 0;
-                    foreach (var node in list)
-                    {
-                        for (int i = 0; i < indent; i++)
-                        {
-                            value += ' ';
-                        }
-                        value += node._assemblyName.FullName + " -> \r\n";
-                        indent += 4;
-                    }
-
+                    value += SingleNodeToString(node) + " -> " + Environment.NewLine;
                 }
-                else
-                {
-                    foreach (var node in list)
-                    {
-                        value += node._assemblyName.FullName + " -> ";
-                    }
-                }
-                return value;
             }
+            if ((part & NodePart.Leaf) == NodePart.Leaf)
+            {
+                return value + SingleNodeToString(this) + Environment.NewLine;
+            }
+            return value;
+        }
 
-            return n._assemblyName.FullName;
+        private string SingleNodeToString(DependencyNode node)
+        {
+            var indent = 0;
+            var n = node;
+            while (n._parent != null)
+            {
+                indent += 4;
+                n = n._parent;
+            }
+            return new string(' ', indent) + node._assemblyName;
         }
     }
 
     [Flags]
     public enum NodePart
     {
-        Full = 3,
         Path = 1,
         Leaf = 2,
-        SplitLine = 4
+        Full = 3,
     }
 }
